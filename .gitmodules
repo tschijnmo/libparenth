@@ -1,0 +1,3 @@
+[submodule "deps/fbitset"]
+	path = deps/fbitset
+	url = https://github.com/tschijnmo/fbitset
