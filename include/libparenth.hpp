@@ -43,15 +43,15 @@ enum class Mode { GREEDY, NORMAL, EXHAUST };
  * @tparam Factor_subset The data type to be used for subsets of factors.  The
  * results will be written in terms of this data type.
  *
- * @tparam Sum_subset The data type to be used for for subsets of sums.  This
- * is only going to be used internally.
+ * @tparam Dim_subset The data type to be used for for subsets of dimensions.
+ * This is only going to be used internally.
  *
  * @tparam Size The data type for the number of sums or factors.
  *
  */
 
 template <typename Dim, typename Factor_subset = fbitset::Fbitset<1>,
-    typename Sum_subset = fbitset::Fbitset<2>, typename Size = fbitset::Size>
+    typename Dim_subset = fbitset::Fbitset<2>, typename Size = fbitset::Size>
 class Parenther {
 public:
     /** Initializes with information about the problem.
@@ -70,20 +70,20 @@ public:
         D first_dim, D last_dim, Size n_sums, F first_factor, F last_factor)
         : dims_(first_dim, last_dim)
         , n_sums_{ n_sums }
-        , sums_on_{}
+        , dims_on_{}
         , factors_with_{}
     {
         factors_with_.assign(n_dims(), Idxes{});
 
         for (Size factor_idx = 0; first_factor != last_factor;
              ++first_factor, ++factor_idx) {
-            assert(sums_on_.size() == factor_idx);
-            sums_on_.emplace_back(n_dims());
+            assert(dims_on_.size() == factor_idx);
+            dims_on_.emplace_back(n_dims());
 
             for (Size i : *first_factor) {
                 assert(i < n_dims());
                 factors_with_[i].push_back(factor_idx);
-                sums_on_.back().set(i);
+                dims_on_.back().set(i);
             }
         }
     }
@@ -100,7 +100,7 @@ public:
     /** The total number of factors.
      */
 
-    size_t n_factors() const noexcept { return sums_on_.size(); }
+    size_t n_factors() const noexcept { return dims_on_.size(); }
 
     /** Some indices.
      *
@@ -204,7 +204,7 @@ private:
          * of the current subproblem.
          */
 
-        Sum_subset curr_sums;
+        Dim_subset curr_sums;
 
         /** The actual summation subset.
          *
@@ -212,7 +212,7 @@ private:
          * dimensions list.
          */
 
-        Sum_subset sums;
+        Dim_subset sums;
 
         /** Makes a less-than comparison.
          *
@@ -235,7 +235,7 @@ private:
             , q_{}
         {
             q_.emplace(Bsums{ parenther_.get_tot(exts.cbegin(), exts.cend()),
-                Sum_subset(sums.size()), Sum_subset(parenther_.n_dims()) });
+                Dim_subset(sums.size()), Dim_subset(parenther_.n_dims()) });
         }
 
         /** If we currently have a value.
@@ -318,7 +318,7 @@ private:
         /** All the dimensions involved by all the factors.
          */
 
-        Sum_subset dims;
+        Dim_subset dims;
 
         /** Constructs an empty subset.
          */
@@ -383,7 +383,7 @@ private:
 
                 if (subproblem[i]) {
                     node.subproblem.factors.set(i);
-                    node.subproblem.dims |= parenther.sums_on_[i];
+                    node.subproblem.dims |= parenther.dims_on_[i];
                 }
             }
         }
@@ -531,7 +531,7 @@ private:
          * parts.
          */
 
-        const Sum_subset& broken_;
+        const Dim_subset& broken_;
 
         /** The chunks in the first part of the bipartition.
          */
@@ -742,10 +742,10 @@ private:
 
     std::vector<Idxes> factors_with_;
 
-    /** The summations on each of the factors.
+    /** The dimensions on each of the factors.
      */
 
-    std::vector<Sum_subset> sums_on_;
+    std::vector<Dim_subset> dims_on_;
 };
 }
 
