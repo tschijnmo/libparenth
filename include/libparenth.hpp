@@ -481,7 +481,7 @@ private:
             Size n_dims)
             : chunks_{ chunks }
             , broken_{ bsums.sums }
-            , curr_{ 0 }
+            , curr_{ 1 }
             , bipart_{ Subset(n_factors, n_dims), Subset(n_factors, n_dims) }
         {
             assert(chunks_.size() < std::numeric_limits<size_t>::digits - 1);
@@ -494,7 +494,7 @@ private:
 
         explicit operator bool() const noexcept
         {
-            return curr_ < (static_cast<size_t>(1) << chunks_.size());
+            return curr_ < ((static_cast<size_t>(1) << chunks_.size()) - 1);
         }
 
         /** Gets the current bipartition.
