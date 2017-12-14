@@ -269,7 +269,7 @@ private:
          * returned reference could be invalidated after the iterator is moved.
          */
 
-        const Bsums& operator*() const { return q_.front(); }
+        const Bsums& operator*() const { return q_.top(); }
 
         /** Increment the iterator.
          */
@@ -411,8 +411,8 @@ private:
                 auto& node = nodes.back();
 
                 if (subproblem[i]) {
-                    node.subproblem.factors.set(i);
-                    node.subproblem.dims |= parenther.dims_on_[i];
+                    node.subset.factors.set(i);
+                    node.subset.dims |= parenther.dims_on_[i];
                 }
             }
         }
@@ -527,7 +527,7 @@ private:
                 bipart_.second.clear();
 
                 for (Size i = 0; i < chunks_.size(); ++i) {
-                    Bipart* dest;
+                    Subset* dest;
                     if (curr_ & (static_cast<size_t>(1) << i)) {
                         dest = &bipart_.first;
                     } else {
@@ -582,11 +582,11 @@ private:
     {
         auto mem_entry = mem.find(subprobl);
         if (mem_entry != mem.end()) {
-            return mem_entry->second.cost;
+            return mem_entry->second.front().cost;
         }
 
         auto mem_stat = mem.emplace(subprobl, Evals{});
-        assert(!mem_stat.second);
+        assert(mem_stat.second);
         auto& evals = mem_stat.first->second;
         assert(evals.empty());
 
