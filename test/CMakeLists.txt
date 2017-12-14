@@ -12,4 +12,5 @@ include_directories(testmain
 # The main test driver.
 add_executable(testmain
         testmain.cpp
+        matrixchain.cpp
         )
