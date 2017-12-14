@@ -595,27 +595,30 @@ private:
             return evals.front().cost;
         }
 
-        for (Bsums_it bsums_it(dims_, sums); bsums_it; ++bsums_it) {
+        for (Bsums_it bsums_it(*this, sums, exts); bsums_it; ++bsums_it) {
+            const auto& bsums = *bsums_it;
+
             bool if_break = false;
             if (mode == Mode::GREEDY) {
                 if_break = !evals.empty();
             } else if (mode == Mode::NORMAL) {
-                if_break = !evals.empty() && bsums_it->lsc > evals.front().cost;
+                if_break = !evals.empty() && bsums.lsc > evals.front().cost;
             }
             if (if_break) {
                 break;
             }
 
             // Form the chunks.
-            auto chunks = form_chunks(subprobl, sums, *bsums_it);
+            auto chunks = form_chunks(subprobl, sums, bsums);
 
-            for (Bipart_it bipart_it(chunks, *bsums_it, n_factors(), n_dims());
+            for (Bipart_it bipart_it(chunks, bsums, n_factors(), n_dims());
                  bipart_it; ++bipart_it) {
 
-                const auto& l_factors = bipart_it->first.factors;
-                const auto& r_factors = bipart_it->second.factors;
-                const auto& l_dims = bipart_it->first.dims;
-                const auto& r_dims = bipart_it->second.dims;
+                const auto& bipart = *bipart_it;
+                const auto& l_factors = bipart.first.factors;
+                const auto& r_factors = bipart.second.factors;
+                const auto& l_dims = bipart.first.dims;
+                const auto& r_dims = bipart.second.dims;
 
                 Idxes l_sums{};
                 Idxes l_exts{};
@@ -638,7 +641,7 @@ private:
                 }
 
                 for (auto i : sums) {
-                    if (bsums_it->sums[i]) {
+                    if (bsums.sums[i]) {
                         assert(l_dims[i]);
                         assert(r_dims[i]);
                         l_exts.push_back(i);
@@ -658,7 +661,7 @@ private:
                 const auto& r_cost
                     = opt(mem, r_factors, r_sums, r_exts, mode, if_incl);
 
-                Dim total_cost = bipart_it->lsc + l_cost + r_cost;
+                Dim total_cost = bsums.lsc + l_cost + r_cost;
 
                 if (!evals.empty() && !if_incl
                     && total_cost > evals.front().cost) {
