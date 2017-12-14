@@ -432,13 +432,13 @@ private:
             if (root_i == root_j)
                 return;
 
-            auto& node_i = nodes[i];
-            auto& node_j = nodes[j];
+            auto& node_i = nodes[root_i];
+            auto& node_j = nodes[root_j];
 
             if (node_i.rank < node_j.rank) {
-                merge_core(j, i);
+                merge_core(root_j, root_i);
             } else {
-                merge_core(i, j);
+                merge_core(root_i, root_j);
                 if (node_i.rank == node_j.rank) {
                     ++node_i.rank;
                 }
