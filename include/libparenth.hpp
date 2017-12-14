@@ -591,16 +591,18 @@ private:
         assert(evals.empty());
 
         auto n_factors = subprobl.count();
+        auto n_total_factors = this->n_factors();
+
         if (n_factors < 2) {
             // Leaf problem.
             assert(n_factors == 1);
 
-            evals.emplace_back(
-                Eval{ Ops{ subprobl, Factor_subset(n_factors()) }, sums, exts,
-                    // Here we ignore the possible internal trace cost, since it
-                    // does not differentiate between any of the different
-                    // parenthesizations.
-                    Dim(0) });
+            evals.emplace_back(Eval{
+                Ops{ subprobl, Factor_subset(n_total_factors) }, sums, exts,
+                // Here we ignore the possible internal trace cost, since it
+                // does not differentiate between any of the different
+                // parenthesizations.
+                Dim(0) });
             return evals.front().cost;
         }
 
@@ -620,7 +622,7 @@ private:
             // Form the chunks.
             auto chunks = form_chunks(subprobl, sums, bsums);
 
-            for (Bipart_it bipart_it(chunks, bsums, n_factors(), n_dims());
+            for (Bipart_it bipart_it(chunks, bsums, n_total_factors, n_dims());
                  bipart_it; ++bipart_it) {
 
                 const auto& bipart = *bipart_it;
