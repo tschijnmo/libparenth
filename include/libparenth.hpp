@@ -348,6 +348,15 @@ private:
             , dims{ n_dims }
         {
         }
+
+        /** Clears all the bits out.
+         */
+
+        void clear() noexcept
+        {
+            factors.clear();
+            dims.clear();
+        }
     };
 
     /** The indivisible chunks mandated by the unbroken summations.
