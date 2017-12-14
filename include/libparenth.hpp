@@ -34,26 +34,46 @@ enum class Mode { GREEDY, NORMAL, EXHAUST };
  * An object can be created for each parenthesization problem, then the answer
  * can be queried from the object.
  *
- * @tparam Dim The type for the sizes of the summations and external indices.
- * It can be any class supporting the basic arithmetic operations and a total
+ * @tparam D The type for the sizes of the summations and external indices.  It
+ * can be any class supporting the basic arithmetic operations and a total
  * order, in addition to the capability of being able to be initialized by
  * integers 0, 1, and 2.  To distinguish it between the normal sizes, the size
  * of the symbolic ranges are called dimensions.
  *
- * @tparam Factor_subset The data type to be used for subsets of factors.  The
- * results will be written in terms of this data type.
+ * @tparam FS The data type to be used for subsets of factors.  The results
+ * will be written in terms of this data type.
  *
- * @tparam Dim_subset The data type to be used for for subsets of dimensions.
- * This is only going to be used internally.
+ * @tparam DS The data type to be used for for subsets of dimensions.  This is
+ * only going to be used internally.
  *
- * @tparam Size The data type for the number of sums or factors.
+ * @tparam S The data type for the number of sums or factors.
  *
  */
 
-template <typename Dim, typename Factor_subset = fbitset::Fbitset<1>,
-    typename Dim_subset = fbitset::Fbitset<2>, typename Size = fbitset::Size>
+template <typename D, typename FS = fbitset::Fbitset<1>,
+    typename DS = fbitset::Fbitset<2>, typename S = fbitset::Size>
 class Parenther {
 public:
+    /** The data type for the sizes of the dimensions.
+     */
+
+    using Dim = D;
+
+    /** The data type for the factor subsets.
+     */
+
+    using Factor_subset = FS;
+
+    /** The data type for the dimension subsets.
+     */
+
+    using Dim_subset = DS;
+
+    /** The data type for sizes of factors and dimensions.
+     */
+
+    using Size = S;
+
     /** Initializes with information about the problem.
      *
      * All dimensions should be given, the first `n_sums` of them are actual
@@ -65,9 +85,9 @@ public:
      *
      */
 
-    template <typename D, typename F>
-    Parenther(
-        D first_dim, D last_dim, Size n_sums, F first_factor, F last_factor)
+    template <typename D_it, typename F_it>
+    Parenther(D_it first_dim, D_it last_dim, Size n_sums, F_it first_factor,
+        F_it last_factor)
         : dims_(first_dim, last_dim)
         , n_sums_{ n_sums }
         , dims_on_{}
