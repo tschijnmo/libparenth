@@ -77,7 +77,9 @@ public:
     /** Initializes with information about the problem.
      *
      * All dimensions should be given, the first `n_sums` of them are actual
-     * summations, with the rest being external indices.
+     * summations, with the rest being external indices.  Note that currently,
+     * the summations are assumed to be sorted in increasing order of their
+     * size.
      *
      * All factors should be given as a pair of iterators, which generates an
      * iterable giving the indices of the dimensions involved by each of the
