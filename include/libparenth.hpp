@@ -154,11 +154,6 @@ public:
 
         Idxes sums;
 
-        /** The external indices for the result.
-         */
-
-        Idxes exts;
-
         /** The aggregate cost for the evaluation.
          */
 
@@ -173,12 +168,51 @@ public:
 
     using Evals = std::vector<Eval>;
 
+    /** Information about an intermediate from parenthesization.
+     *
+     * All intermediates traversed during the optimal parenthesization
+     * searching will have an object of this class to serve as its entry in the
+     * memoir.
+     */
+
+    struct Interm {
+
+        /** All the summations solely wrapped inside it.
+         *
+         * These are all the summations wrapped inside.  Some of them may not
+         * actually be carried out in the last step.
+         */
+
+        Idxes sums;
+
+        /** All the external indices for the intermediate.
+         *
+         * Some of them might be summations indices from a outer level of
+         * parenthesization.
+         */
+
+        Idxes exts;
+
+        /** All the evaluations stored.
+         */
+
+        Evals evals;
+
+        template <typename T, typename U>
+        Interm(T&& sums, U&& exts)
+            : sums(std::forward<T>(sums))
+            , exts(std::forward<U>(exts))
+            , evals{}
+        {
+        }
+    };
+
     /** The memoir for the dynamic programming.
      *
      * It also gives the evaluation of all the intermediate steps.
      */
 
-    using Mem = std::unordered_map<Factor_subset, Evals>;
+    using Mem = std::unordered_map<Factor_subset, Interm>;
 
     /** Finds the optimal parenthesization of the problem.
      *
@@ -584,12 +618,12 @@ private:
     {
         auto mem_entry = mem.find(subprobl);
         if (mem_entry != mem.end()) {
-            return mem_entry->second.front().cost;
+            return mem_entry->second.evals.front().cost;
         }
 
-        auto mem_stat = mem.emplace(subprobl, Evals{});
+        auto mem_stat = mem.emplace(subprobl, Interm(sums, exts));
         assert(mem_stat.second);
-        auto& evals = mem_stat.first->second;
+        auto& evals = mem_stat.first->second.evals;
         assert(evals.empty());
 
         auto n_factors = subprobl.count();
@@ -599,12 +633,12 @@ private:
             // Leaf problem.
             assert(n_factors == 1);
 
-            evals.emplace_back(Eval{
-                Ops{ subprobl, Factor_subset(n_total_factors) }, sums, exts,
-                // Here we ignore the possible internal trace cost, since it
-                // does not differentiate between any of the different
-                // parenthesizations.
-                Dim(0) });
+            evals.emplace_back(
+                Eval{ Ops{ subprobl, Factor_subset(n_total_factors) }, sums,
+                    // Here we ignore the possible internal trace cost, since it
+                    // does not differentiate between any of the different
+                    // parenthesizations.
+                    Dim(0) });
             return evals.front().cost;
         }
 
@@ -686,8 +720,8 @@ private:
                 if (!if_incl && new_opt) {
                     evals.clear();
                 }
-                evals.emplace_back(Eval{
-                    Ops{ l_factors, r_factors }, last_sums, exts, total_cost });
+                evals.emplace_back(
+                    Eval{ Ops{ l_factors, r_factors }, last_sums, total_cost });
 
                 // Ensure the optimality of the first evaluation.
                 if (new_opt && evals.size() > 1) {

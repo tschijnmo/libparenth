@@ -47,49 +47,55 @@ TEST_CASE("A simple chain product of three matrices can be parenthesized")
 
         auto it = res.find(p012);
         REQUIRE(it != res.end());
-        const auto& top_eval = it->second.front();
+        CHECK(it->second.sums.size() == 2);
+        CHECK(it->second.sums[0] == 0);
+        CHECK(it->second.sums[1] == 1);
+        CHECK(it->second.exts.size() == 2);
+        CHECK(it->second.exts[0] == 2);
+        CHECK(it->second.exts[1] == 3);
 
+        const auto& top_eval = it->second.evals.front();
         bool top_eval_ops_good
             = (top_eval.ops.first == p0 && top_eval.ops.second == p12)
             || (top_eval.ops.first == p12 && top_eval.ops.second == p0);
         CHECK(top_eval_ops_good);
         CHECK(top_eval.sums.size() == 1);
         CHECK(top_eval.sums[0] == 0);
-        CHECK(top_eval.exts.size() == 2);
-        CHECK(top_eval.exts[0] == 2);
-        CHECK(top_eval.exts[1] == 3);
         CHECK(top_eval.cost
             == 2ull * 2000 * 1000 * 3000 + 2ull * 1000 * 2000 * 1000);
 
         it = res.find(p12);
         REQUIRE(it != res.end());
-        CHECK(it->second.size() == 1);
-        const auto& eval12 = it->second.front();
+        CHECK(it->second.sums.size() == 1);
+        CHECK(it->second.sums[0] == 1);
+        CHECK(it->second.exts.size() == 2);
+        CHECK(it->second.exts[0] == 3);
+        CHECK(it->second.exts[1] == 0);
+
+        CHECK(it->second.evals.size() == 1);
+        const auto& eval12 = it->second.evals.front();
         bool ops_12_good = (eval12.ops.first == p1 && eval12.ops.second == p2)
             || (eval12.ops.first == p2 && eval12.ops.second == p1);
         CHECK(ops_12_good);
-        CHECK(eval12.sums.size() == 1);
-        CHECK(eval12.sums[0] == 1);
-        CHECK(eval12.exts.size() == 2);
-        CHECK(eval12.exts[0] == 3);
-        CHECK(eval12.exts[1] == 0);
+        CHECK(eval12.sums == it->second.sums);
         CHECK(eval12.cost == 2ull * 2000 * 1000 * 3000);
 
         // Check the leaves.
         for (const auto& i : { p0, p1, p2 }) {
             it = res.find(i);
             REQUIRE(it != res.end());
-            CHECK(it->second.size() == 1);
-            const auto& eval = it->second.front();
+            CHECK(it->second.sums.empty());
+            const auto& exts = factors[i.find_last()];
+            bool exts_good = (it->second.exts[0] == exts[1]
+                                 && it->second.exts[1] == exts[0])
+                || (it->second.exts == exts);
+            CHECK(exts_good);
+
+            CHECK(it->second.evals.size() == 1);
+            const auto& eval = it->second.evals.front();
             CHECK(eval.ops.first == i);
             CHECK(eval.ops.second.count() == 0);
             CHECK(eval.sums.empty());
-            CHECK(eval.exts.size() == 2);
-            const auto& exts = factors[i.find_last()];
-            bool exts_good
-                = (eval.exts[0] == exts[1] && eval.exts[1] == exts[0])
-                || (eval.exts == exts);
-            CHECK(exts_good);
             CHECK(eval.cost == 0);
         }
     };
@@ -122,7 +128,7 @@ TEST_CASE("A simple chain product of three matrices can be parenthesized")
         CHECK(res.size() == 6);
         auto it = res.find(P::Factor_subset(3, true));
         REQUIRE(it != res.end());
-        CHECK(it->second.size() == 2);
+        CHECK(it->second.evals.size() == 2);
     }
 
     SECTION("The exhaustive mode gives the right answer")
@@ -133,6 +139,6 @@ TEST_CASE("A simple chain product of three matrices can be parenthesized")
         CHECK(res.size() == 7);
         auto it = res.find(P::Factor_subset(3, true));
         REQUIRE(it != res.end());
-        CHECK(it->second.size() == 3);
+        CHECK(it->second.evals.size() == 3);
     }
 }
