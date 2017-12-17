@@ -198,10 +198,9 @@ public:
 
         Evals evals;
 
-        template <typename T, typename U>
-        Interm(T&& sums, U&& exts)
-            : sums(std::forward<T>(sums))
-            , exts(std::forward<U>(exts))
+        Interm()
+            : sums{}
+            , exts{}
             , evals{}
         {
         }
@@ -230,7 +229,8 @@ public:
         Idxes exts(n_dims() - n_sums_);
         std::iota(exts.begin(), exts.end(), n_sums_);
 
-        opt(mem, top_probl, sums, exts, mode, if_incl);
+        opt(mem, top_probl, sums, exts, Dim_subset(n_dims(), true),
+            Dim_subset(n_dims()), mode, if_incl);
 
         return mem;
     }
@@ -613,18 +613,68 @@ private:
     // Internal functions
     //
 
-    const Dim& opt(Mem& mem, const Factor_subset& subprobl, const Idxes& sums,
-        const Idxes& exts, Mode mode, bool if_incl)
+    /** Searches the optimal parenthesization of the given subproblem.
+     *
+     * This is the core optimization function.  The optimal cost for the given
+     * subproblem will be returned.
+     *
+     * @param mem The main memoir for the results.
+     *
+     * @param subprobl The subproblem given as the subset of factors.
+     *
+     * @param cand_sums All the summations to be carried out inside the *upper
+     * level* of parenthesization.  These are the candidate summations for the
+     * current subproblem.
+     *
+     * @param cand_exts The external indices for the upper level of problem.
+     *
+     * @param involved The dimensions involved by the current set of factors.
+     *
+     * @param extized The summations in the outer problem that must be turned
+     * into an external dimension in the current problem.
+     *
+     * @param mode The main-loop termination mode.
+     *
+     * @param if_incl If the suboptimal parenthesizations should be included in
+     * the result.
+     */
+
+    const Dim& opt(Mem& mem, const Factor_subset& subprobl,
+        const Idxes& cand_sums, const Idxes& cand_exts,
+        const Dim_subset& involved, const Dim_subset& extized, Mode mode,
+        bool if_incl)
     {
         auto mem_entry = mem.find(subprobl);
         if (mem_entry != mem.end()) {
             return mem_entry->second.evals.front().cost;
         }
 
-        auto mem_stat = mem.emplace(subprobl, Interm(sums, exts));
+        auto mem_stat = mem.emplace(subprobl, Interm{});
         assert(mem_stat.second);
         auto& evals = mem_stat.first->second.evals;
         assert(evals.empty());
+
+        auto& sums = mem_stat.first->second.sums;
+        auto& exts = mem_stat.first->second.exts;
+
+        // Here we treat the externals first so that the originally external
+        // indices appear before the newly externalized indices.
+        for (auto i : cand_exts) {
+            if (involved[i]) {
+                exts.push_back(i);
+            }
+        }
+        for (auto i : cand_sums) {
+            if (!involved[i]) {
+                continue;
+            }
+
+            if (extized[i]) {
+                exts.push_back(i);
+            } else {
+                sums.push_back(i);
+            }
+        }
 
         auto n_factors = subprobl.count();
         auto n_total_factors = this->n_factors();
@@ -667,46 +717,22 @@ private:
                 const auto& l_dims = bipart.first.dims;
                 const auto& r_dims = bipart.second.dims;
 
-                Idxes l_sums{};
-                Idxes l_exts{};
-                Idxes r_sums{};
-                Idxes r_exts{};
                 // The summations to be carried out right here for the last
                 // step.
                 Idxes last_sums{};
 
-                // Here we treat the externals first so that the originally
-                // external indices appear before the newly externalized
-                // indices.
-                for (auto i : exts) {
-                    if (l_dims[i]) {
-                        l_exts.push_back(i);
-                    }
-                    if (r_dims[i]) {
-                        r_exts.push_back(i);
-                    }
-                }
-
-                for (auto i : sums) {
+                for (auto i : cand_sums) {
                     if (bsums.sums[i]) {
                         assert(l_dims[i]);
                         assert(r_dims[i]);
-                        l_exts.push_back(i);
-                        r_exts.push_back(i);
                         last_sums.push_back(i);
-                    } else if (l_dims[i]) {
-                        assert(!r_dims[i]);
-                        l_sums.push_back(i);
-                    } else if (r_dims[i]) {
-                        assert(!l_dims[i]);
-                        r_sums.push_back(i);
                     }
                 }
 
-                const auto& l_cost
-                    = opt(mem, l_factors, l_sums, l_exts, mode, if_incl);
-                const auto& r_cost
-                    = opt(mem, r_factors, r_sums, r_exts, mode, if_incl);
+                const auto& l_cost = opt(mem, l_factors, sums, exts, l_dims,
+                    bsums.sums, mode, if_incl);
+                const auto& r_cost = opt(mem, r_factors, sums, exts, r_dims,
+                    bsums.sums, mode, if_incl);
 
                 Dim total_cost = bsums.lsc + l_cost + r_cost;
 
@@ -720,8 +746,8 @@ private:
                 if (!if_incl && new_opt) {
                     evals.clear();
                 }
-                evals.emplace_back(
-                    Eval{ Ops{ l_factors, r_factors }, last_sums, total_cost });
+                evals.emplace_back(Eval{ Ops{ l_factors, r_factors },
+                    std::move(last_sums), total_cost });
 
                 // Ensure the optimality of the first evaluation.
                 if (new_opt && evals.size() > 1) {
