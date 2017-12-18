@@ -5,6 +5,7 @@
 #define LIBPARENTH_LIBPARENTH_HPP
 
 #include <algorithm>
+#include <iterator>
 #include <numeric>
 #include <queue>
 #include <unordered_map>
@@ -40,13 +41,15 @@ enum class Mode { GREEDY, NORMAL, EXHAUST };
  * integers 0, 1, and 2.  To distinguish it between the normal sizes, the size
  * of the symbolic ranges are called dimensions.
  *
- * @tparam FS The data type to be used for subsets of factors.  The results
- * will be written in terms of this data type.
+ * @tparam FS The data type to be used for subsets of factors.
  *
- * @tparam DS The data type to be used for for subsets of dimensions.  This is
- * only going to be used internally.
+ * @tparam DS The data type to be used for for subsets of dimensions.
  *
  * @tparam S The data type for the number of sums or factors.
+ *
+ * The FS and DS arguments should normally be an instantiation of the `Fbitset`
+ * template in the fbitset package.  But it is not enforced, any data type
+ * satisfying the same interface can be used.
  *
  */
 
@@ -95,19 +98,22 @@ public:
         , dims_on_{}
         , factors_with_{}
     {
-        factors_with_.assign(n_dims(), Idxes{});
+        auto n_factors = std::distance(first_factor, last_factor);
+        factors_with_.assign(n_dims(), Factor_subset(n_factors));
 
-        for (Size factor_idx = 0; first_factor != last_factor;
-             ++first_factor, ++factor_idx) {
+        Size factor_idx = 0;
+        for (; first_factor != last_factor; ++first_factor, ++factor_idx) {
             assert(dims_on_.size() == factor_idx);
             dims_on_.emplace_back(n_dims());
 
             for (Size i : *first_factor) {
                 assert(i < n_dims());
-                factors_with_[i].push_back(factor_idx);
+                factors_with_[i].set(factor_idx);
                 dims_on_.back().set(i);
             }
         }
+
+        assert(factor_idx == n_factors);
     }
 
     // Except the above constructor, normally we would put the basic
@@ -123,15 +129,6 @@ public:
      */
 
     size_t n_factors() const noexcept { return dims_on_.size(); }
-
-    /** Some indices.
-     *
-     * It can be used to give an enumeration of things by listing their indices
-     * in another linear container.  For instance, a list of dimensions in the
-     * problem.
-     */
-
-    using Idxes = std::vector<size_t>;
 
     /** The two operands of a pairwise contraction.
      *
@@ -152,7 +149,7 @@ public:
         /** The summations to be carried out in the last step.
          */
 
-        Idxes sums;
+        Dim_subset sums;
 
         /** The aggregate cost for the evaluation.
          */
@@ -183,7 +180,7 @@ public:
          * actually be carried out in the last step.
          */
 
-        Idxes sums;
+        Dim_subset sums;
 
         /** All the external indices for the intermediate.
          *
@@ -191,16 +188,16 @@ public:
          * parenthesization.
          */
 
-        Idxes exts;
+        Dim_subset exts;
 
         /** All the evaluations stored.
          */
 
         Evals evals;
 
-        Interm()
-            : sums{}
-            , exts{}
+        Interm(const Dim_subset& sums, const Dim_subset& exts)
+            : sums{ sums }
+            , exts{ exts }
             , evals{}
         {
         }
@@ -224,10 +221,13 @@ public:
         Mem mem{};
 
         Factor_subset top_probl(n_factors(), true);
-        Idxes sums(n_sums_);
-        std::iota(sums.begin(), sums.end(), 0);
-        Idxes exts(n_dims() - n_sums_);
-        std::iota(exts.begin(), exts.end(), n_sums_);
+
+        Dim_subset sums(n_dims());
+        sums.set_all(n_sums_);
+
+        Dim_subset exts(n_dims(), true);
+        assert((sums & exts) == sums);
+        exts ^= sums;
 
         opt(mem, top_probl, sums, exts, Dim_subset(n_dims(), true),
             Dim_subset(n_dims()), mode, if_incl);
@@ -256,7 +256,7 @@ private:
 
         /** The summation subset in the current subproblem.
          *
-         * Here the bits are set according to the indices in the summation list
+         * Here the bits are set according to the indices among the summations
          * of the current subproblem.
          */
 
@@ -284,14 +284,20 @@ private:
 
     class Bsums_it {
     public:
-        Bsums_it(
-            const Parenther& parenther, const Idxes& sums, const Idxes& exts)
+        Bsums_it(const Parenther& parenther, const Dim_subset& sums,
+            const Dim_subset& exts)
             : parenther_{ parenther }
-            , sums_{ sums }
+            , sums_{}
             , q_{}
         {
-            q_.emplace(Bsums{ parenther_.get_tot(exts.cbegin(), exts.cend()),
-                Dim_subset(sums.size()), Dim_subset(parenther_.n_dims()) });
+            q_.emplace(Bsums{ parenther_.get_tot(exts),
+                Dim_subset(sums.count()), Dim_subset(parenther_.n_dims()) });
+
+            sums_.reserve(sums.count());
+            for (auto i = sums.begin(); i; ++i) {
+                sums_.push_back(*i);
+            }
+            assert(sums_.size() == sums.count());
         }
 
         /** If we currently have a value.
@@ -354,7 +360,7 @@ private:
         /** The indices of the summations in the current subproblem.
          */
 
-        const Idxes& sums_;
+        std::vector<Size> sums_;
 
         /** The core heap queue data structure.
          */
@@ -530,7 +536,7 @@ private:
 
         explicit operator bool() const noexcept
         {
-            return curr_ < ((static_cast<size_t>(1) << chunks_.size()) - 1);
+            return curr_ < ((size_t(1) << chunks_.size()) - 1);
         }
 
         /** Gets the current bipartition.
@@ -564,7 +570,7 @@ private:
 
                 for (Size i = 0; i < chunks_.size(); ++i) {
                     Subset* dest;
-                    if (curr_ & (static_cast<size_t>(1) << i)) {
+                    if (curr_ & (size_t(1) << i)) {
                         dest = &bipart_.first;
                     } else {
                         dest = &bipart_.second;
@@ -640,7 +646,7 @@ private:
      */
 
     const Dim& opt(Mem& mem, const Factor_subset& subprobl,
-        const Idxes& cand_sums, const Idxes& cand_exts,
+        const Dim_subset& cand_sums, const Dim_subset& cand_exts,
         const Dim_subset& involved, const Dim_subset& extized, Mode mode,
         bool if_incl)
     {
@@ -649,32 +655,20 @@ private:
             return mem_entry->second.evals.front().cost;
         }
 
-        auto mem_stat = mem.emplace(subprobl, Interm{});
+        auto mem_stat = mem.emplace(subprobl, Interm(cand_sums, cand_exts));
         assert(mem_stat.second);
         auto& evals = mem_stat.first->second.evals;
         assert(evals.empty());
 
         auto& sums = mem_stat.first->second.sums;
         auto& exts = mem_stat.first->second.exts;
+        sums &= involved;
+        assert((sums & extized) == extized);
+        sums ^= extized;
 
-        // Here we treat the externals first so that the originally external
-        // indices appear before the newly externalized indices.
-        for (auto i : cand_exts) {
-            if (involved[i]) {
-                exts.push_back(i);
-            }
-        }
-        for (auto i : cand_sums) {
-            if (!involved[i]) {
-                continue;
-            }
-
-            if (extized[i]) {
-                exts.push_back(i);
-            } else {
-                sums.push_back(i);
-            }
-        }
+        exts &= involved;
+        assert((exts & extized).count() == 0);
+        exts |= extized;
 
         auto n_factors = subprobl.count();
         auto n_total_factors = this->n_factors();
@@ -712,27 +706,11 @@ private:
                  bipart_it; ++bipart_it) {
 
                 const auto& bipart = *bipart_it;
-                const auto& l_factors = bipart.first.factors;
-                const auto& r_factors = bipart.second.factors;
-                const auto& l_dims = bipart.first.dims;
-                const auto& r_dims = bipart.second.dims;
 
-                // The summations to be carried out right here for the last
-                // step.
-                Idxes last_sums{};
-
-                for (auto i : cand_sums) {
-                    if (bsums.sums[i]) {
-                        assert(l_dims[i]);
-                        assert(r_dims[i]);
-                        last_sums.push_back(i);
-                    }
-                }
-
-                const auto& l_cost = opt(mem, l_factors, sums, exts, l_dims,
-                    bsums.sums, mode, if_incl);
-                const auto& r_cost = opt(mem, r_factors, sums, exts, r_dims,
-                    bsums.sums, mode, if_incl);
+                const auto& l_cost = opt(mem, bipart.first.factors, sums, exts,
+                    bipart.first.dims, bsums.sums, mode, if_incl);
+                const auto& r_cost = opt(mem, bipart.second.factors, sums, exts,
+                    bipart.second.dims, bsums.sums, mode, if_incl);
 
                 Dim total_cost = bsums.lsc + l_cost + r_cost;
 
@@ -746,8 +724,9 @@ private:
                 if (!if_incl && new_opt) {
                     evals.clear();
                 }
-                evals.emplace_back(Eval{ Ops{ l_factors, r_factors },
-                    std::move(last_sums), total_cost });
+                evals.emplace_back(
+                    Eval{ Ops{ bipart.first.factors, bipart.second.factors },
+                        std::move(bsums.sums), total_cost });
 
                 // Ensure the optimality of the first evaluation.
                 if (new_opt && evals.size() > 1) {
@@ -762,30 +741,27 @@ private:
     /** Forms the indivisible chunks mandated by the unbroken summations.
      */
 
-    Chunks form_chunks(
-        const Factor_subset& subprobl, const Idxes& sums, const Bsums& bsums)
+    Chunks form_chunks(const Factor_subset& subprobl, const Dim_subset& sums,
+        const Bsums& bsums)
     {
         // Initialize the DSF.
         DSF dsf(*this, subprobl);
 
         // Union the DSF into chunks.
-        for (auto sum : sums) {
-            if (bsums.sums[sum]) {
-                // Broken summation does not merge things.
+        auto kept_sums = sums;
+        assert((kept_sums & bsums.sums) == bsums.sums);
+        kept_sums ^= bsums.sums;
+
+        for (auto it = kept_sums.begin(); it; ++it) {
+            auto factors = factors_with_[*it] & subprobl;
+            if (factors.count() < 2) {
                 continue;
             }
+            auto base = factors.find_last();
+            factors.flip(base);
 
-            ptrdiff_t base = -1;
-            for (auto i : factors_with_[sum]) {
-                if (!subprobl[i]) {
-                    continue;
-                }
-
-                if (base == -1) {
-                    base = i;
-                } else {
-                    dsf.merge(base, i);
-                }
+            for (auto i = factors.begin(); i; ++i) {
+                dsf.merge(base, *i);
             }
         }
 
@@ -810,12 +786,11 @@ private:
      * zero).
      */
 
-    template <typename It> Dim get_tot(It first, It last) const noexcept
+    Dim get_tot(const Dim_subset& dims) const noexcept
     {
         Dim res{ 1 };
-        while (first != last) {
-            res *= dims_[*first];
-            ++first;
+        for (auto it = dims.begin(); it; ++it) {
+            res *= dims_[*it];
         }
         return res;
     }
@@ -836,7 +811,7 @@ private:
     /** The factors with each of the dimensions.
      */
 
-    std::vector<Idxes> factors_with_;
+    std::vector<Factor_subset> factors_with_;
 
     /** The dimensions on each of the factors.
      */
