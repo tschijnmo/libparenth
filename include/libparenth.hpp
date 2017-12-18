@@ -316,7 +316,7 @@ private:
             auto bsums = std::move(q_.top());
             q_.pop();
 
-            auto top_idx = bsums.sums.find_last();
+            auto top_idx = bsums.curr_sums.find_last();
             auto next_idx = top_idx + 1;
             if (next_idx < sums_.size()) {
                 bsums.lsc *= parenther_.dims_[sums_[next_idx]];
