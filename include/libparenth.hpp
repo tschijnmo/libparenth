@@ -304,7 +304,7 @@ private:
         /** If we currently have a value.
          */
 
-        explicit operator bool() const { return !q_.empty(); }
+        explicit operator bool() const noexcept { return !q_.empty(); }
 
         /** Gets the current broken summations.
          *
@@ -312,7 +312,7 @@ private:
          * returned reference could be invalidated after the iterator is moved.
          */
 
-        const Bsums& operator*() const { return q_.top(); }
+        const Bsums& operator*() const noexcept { return q_.top(); }
 
         /** Increment the iterator.
          */
@@ -463,7 +463,7 @@ private:
         /** Finds the root of the node at the given index.
          */
 
-        size_t find(size_t i)
+        size_t find(size_t i) noexcept
         {
             size_t& parent = nodes[i].parent;
             if (parent == i)
@@ -477,7 +477,7 @@ private:
         /** Unions the subset with the nodes at the two given indices.
          */
 
-        void merge(size_t i, size_t j)
+        void merge(size_t i, size_t j) noexcept
         {
             auto root_i = find(i);
             auto root_j = find(j);
@@ -502,7 +502,7 @@ private:
          *
          * The two indices must already be root indices.
          */
-        void merge_core(size_t dest_idx, size_t src_idx)
+        void merge_core(size_t dest_idx, size_t src_idx) noexcept
         {
             auto& dest = nodes[dest_idx];
             auto& src = nodes[src_idx];
@@ -548,7 +548,7 @@ private:
         /** Increments the bipartition iterator.
          */
 
-        Bipart_it& operator++()
+        Bipart_it& operator++() noexcept
         {
             curr_ += 2;
             form_bipart();
@@ -563,7 +563,7 @@ private:
          * the broken summations.
          */
 
-        void form_bipart()
+        void form_bipart() noexcept
         {
             while (*this) {
                 bipart_.first.clear();
