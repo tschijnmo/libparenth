@@ -37,8 +37,8 @@ enum class Mode { GREEDY, NORMAL, EXHAUST };
  * @tparam D The type for the sizes of the summations and external indices.  It
  * can be any class supporting the basic arithmetic operations and a total
  * order, in addition to the capability of being able to be initialized by
- * integers 0, 1, and 2.  To distinguish it between the normal sizes, the size
- * of the symbolic ranges are called dimensions.
+ * integers 0, 1, and 2.  To distinguish it between the normal concrete
+ * integral sizes, these size of the symbolic ranges are called dimensions.
  *
  * @tparam FS The data type to be used for subsets of factors.
  *
@@ -97,6 +97,8 @@ public:
         , dims_on_{}
         , factors_with_{}
     {
+        assert(std::is_sorted(dims_.cbegin(), dims_.cbegin() + n_sums_));
+
         auto n_factors = std::distance(first_factor, last_factor);
         factors_with_.assign(n_dims(), Factor_subset(n_factors));
 
