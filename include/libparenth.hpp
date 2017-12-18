@@ -701,7 +701,11 @@ private:
             }
 
             // Form the chunks.
-            auto chunks = form_chunks(subprobl, sums, bsums);
+            // Union the DSF into chunks.
+            auto kept_sums = sums;
+            assert((kept_sums & bsums.sums) == bsums.sums);
+            kept_sums ^= bsums.sums;
+            auto chunks = form_chunks(subprobl, kept_sums);
 
             for (Bipart_it bipart_it(chunks, bsums, n_total_factors, n_dims());
                  bipart_it; ++bipart_it) {
@@ -742,16 +746,11 @@ private:
     /** Forms the indivisible chunks mandated by the unbroken summations.
      */
 
-    Chunks form_chunks(const Factor_subset& subprobl, const Dim_subset& sums,
-        const Bsums& bsums)
+    Chunks form_chunks(
+        const Factor_subset& subprobl, const Dim_subset& kept_sums)
     {
         // Initialize the DSF.
         DSF dsf(*this, subprobl);
-
-        // Union the DSF into chunks.
-        auto kept_sums = sums;
-        assert((kept_sums & bsums.sums) == bsums.sums);
-        kept_sums ^= bsums.sums;
 
         for (auto it = kept_sums.begin(); it; ++it) {
             auto factors = factors_with_[*it] & subprobl;
