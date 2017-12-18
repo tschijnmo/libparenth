@@ -291,14 +291,14 @@ private:
             , sums_{}
             , q_{}
         {
-            q_.emplace(Bsums{ parenther_.get_tot(exts),
-                Dim_subset(sums.count()), Dim_subset(parenther_.n_dims()) });
-
             sums_.reserve(sums.count());
             for (auto i = sums.begin(); i; ++i) {
                 sums_.push_back(*i);
             }
+
             assert(sums_.size() == sums.count());
+            q_.emplace(Bsums{ parenther_.get_tot(exts),
+                Dim_subset(sums_.size()), Dim_subset(parenther_.n_dims()) });
         }
 
         /** If we currently have a value.
