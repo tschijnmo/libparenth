@@ -379,6 +379,9 @@ private:
         Factor_subset factors;
 
         /** All the dimensions involved by all the factors.
+         *
+         * Note that here we do not distinguish between the summations and
+         * externals.
          */
 
         Dim_subset dims;
@@ -631,7 +634,8 @@ private:
      *
      * @param cand_sums All the summations to be carried out inside the *upper
      * level* of parenthesization.  These are the candidate summations for the
-     * current subproblem.
+     * current subproblem.  Some of them might be turned into external in this
+     * level.
      *
      * @param cand_exts The external indices for the upper level of problem.
      *
@@ -656,6 +660,8 @@ private:
             return mem_entry->second.evals.front().cost;
         }
 
+        // The actual summations and externals will be computed later based on
+        // the current candidate values.
         auto mem_stat = mem.emplace(subprobl, Interm(cand_sums, cand_exts));
         assert(mem_stat.second);
         auto& evals = mem_stat.first->second.evals;
