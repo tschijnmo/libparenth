@@ -37,8 +37,9 @@ enum class Mode { GREEDY, NORMAL, EXHAUST };
  * @tparam D The type for the sizes of the summations and external indices.  It
  * can be any class supporting the basic arithmetic operations and a total
  * order, in addition to the capability of being able to be initialized by
- * integers 0, 1, and 2.  To distinguish it between the normal concrete
- * integral sizes, these size of the symbolic ranges are called dimensions.
+ * integers literals 0l, 1l, and 2l.  To distinguish it between the normal
+ * concrete integral sizes, these size of the symbolic ranges are called
+ * dimensions.
  *
  * @tparam FS The data type to be used for subsets of factors.
  *
@@ -328,7 +329,7 @@ private:
             if (next_idx < sums_.size()) {
                 bsums.lsc *= parenther_.dims_[sums_[next_idx]];
                 if (top_idx < 0) {
-                    bsums.lsc *= Dim(2);
+                    bsums.lsc *= Dim(2l);
                 }
                 bsums.curr_sums.set(next_idx);
                 bsums.sums.set(sums_[next_idx]);
@@ -689,7 +690,7 @@ private:
                     // Here we ignore the possible internal trace cost, since it
                     // does not differentiate between any of the different
                     // parenthesizations.
-                    Dim(0) });
+                    Dim(0l) });
             return evals.front().cost;
         }
 
@@ -794,7 +795,7 @@ private:
 
     Dim get_tot(const Dim_subset& dims) const noexcept
     {
-        Dim res{ 1 };
+        Dim res{ 1l };
         for (auto it = dims.begin(); it; ++it) {
             res *= dims_[*it];
         }
