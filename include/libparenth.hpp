@@ -327,9 +327,9 @@ private:
             auto top_idx = bsums.curr_sums.find_last();
             auto next_idx = top_idx + 1;
             if (next_idx < sums_.size()) {
-                bsums.lsc *= parenther_.dims_[sums_[next_idx]];
+                bsums.lsc = bsums.lsc * parenther_.dims_[sums_[next_idx]];
                 if (top_idx < 0) {
-                    bsums.lsc *= Dim(2l);
+                    bsums.lsc = bsums.lsc * Dim(2l);
                 }
                 bsums.curr_sums.set(next_idx);
                 bsums.sums.set(sums_[next_idx]);
@@ -338,7 +338,7 @@ private:
                 if (top_idx >= 0) {
                     const auto& top_dim = parenther_.dims_[sums_[top_idx]];
                     assert(bsums.lsc % top_dim == 0);
-                    bsums.lsc /= top_dim;
+                    bsums.lsc = bsums.lsc / top_dim;
 
                     assert(bsums.curr_sums[top_idx]);
                     bsums.curr_sums.flip(top_idx);
@@ -797,7 +797,7 @@ private:
     {
         Dim res{ 1l };
         for (auto it = dims.begin(); it; ++it) {
-            res *= dims_[*it];
+            res = res * dims_[*it];
         }
         return res;
     }
