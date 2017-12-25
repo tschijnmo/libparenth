@@ -661,6 +661,10 @@ private:
             return mem_entry->second.evals.front().cost;
         }
 
+        // If the purpose is for the optimal solution only (without asking for
+        // extra information).
+        bool if_for_opt = mode != Mode::EXHAUST && !if_incl;
+
         // The actual summations and externals will be computed later based on
         // the current candidate values.
         auto mem_stat = mem.emplace(subprobl, Interm(cand_sums, cand_exts));
@@ -714,6 +718,20 @@ private:
             kept_sums ^= bsums.sums;
             auto chunks = form_chunks(subprobl, kept_sums);
 
+            // No enough broken summations.
+            if (chunks.size() < 2) {
+                continue;
+            }
+
+            // Unnatural partition.
+            if (if_for_opt && chunks.size() > 2
+                && std::all_of(
+                       chunks.cbegin(), chunks.cend(), [&mem](const Subset& i) {
+                           return mem.count(i.factors) != 0;
+                       })) {
+                continue;
+            }
+
             for (Bipart_it bipart_it(chunks, bsums, n_total_factors, n_dims());
                  bipart_it; ++bipart_it) {
 
@@ -747,6 +765,7 @@ private:
             }
         }
 
+        assert(!evals.empty());
         return evals.front().cost;
     }
 
