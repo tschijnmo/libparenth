@@ -316,9 +316,14 @@ private:
         const Bsums& operator*() const noexcept { return q_.top(); }
 
         /** Increment the iterator.
+         *
+         * @param allow_aug if augmentation is allowed as future broken sums.
+         * If it is disabled, only shift can possibly be put back into the
+         * queue.
+         *
          */
 
-        Bsums_it& operator++()
+        void incr(bool allow_aug)
         {
             assert(!q_.empty());
             auto bsums = std::move(q_.top());
@@ -327,14 +332,19 @@ private:
             auto top_idx = bsums.curr_sums.find_last();
             auto next_idx = top_idx + 1;
             if (next_idx < sums_.size()) {
+
+                // Augmentation.
                 bsums.lsc = bsums.lsc * parenther_.dims_[sums_[next_idx]];
                 if (top_idx < 0) {
                     bsums.lsc = bsums.lsc * Dim(2l);
                 }
                 bsums.curr_sums.set(next_idx);
                 bsums.sums.set(sums_[next_idx]);
-                q_.push(bsums);
+                if (allow_aug) {
+                    q_.push(bsums);
+                }
 
+                // Shift.
                 if (top_idx >= 0) {
                     const auto& top_dim = parenther_.dims_[sums_[top_idx]];
                     assert(bsums.lsc % top_dim == 0);
@@ -350,7 +360,7 @@ private:
                 }
             }
 
-            return *this;
+            return;
         }
 
     private:
@@ -698,7 +708,7 @@ private:
             return evals.front().cost;
         }
 
-        for (Bsums_it bsums_it(*this, sums, exts); bsums_it; ++bsums_it) {
+        for (Bsums_it bsums_it(*this, sums, exts); bsums_it;) {
             const auto& bsums = *bsums_it;
 
             bool if_break = false;
@@ -720,6 +730,7 @@ private:
 
             // No enough broken summations.
             if (chunks.size() < 2) {
+                bsums_it.incr(true);
                 continue;
             }
 
@@ -729,6 +740,7 @@ private:
                        chunks.cbegin(), chunks.cend(), [&mem](const Subset& i) {
                            return mem.count(i.factors) != 0;
                        })) {
+                bsums_it.incr(false);
                 continue;
             }
 
@@ -763,6 +775,8 @@ private:
                     std::swap(evals.front(), evals.back());
                 }
             }
+
+            bsums_it.incr(true);
         }
 
         assert(!evals.empty());
