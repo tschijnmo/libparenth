@@ -708,14 +708,17 @@ private:
             return evals.front().cost;
         }
 
+        bool if_first = true;
+        bool if_force_break = false;
+
         for (Bsums_it bsums_it(*this, sums, exts); bsums_it;) {
             const auto& bsums = *bsums_it;
 
-            bool if_break = false;
+            bool if_break = if_force_break;
             if (mode == Mode::GREEDY) {
-                if_break = !evals.empty();
+                if_break |= !evals.empty();
             } else if (mode == Mode::NORMAL) {
-                if_break = !evals.empty() && bsums.lsc > evals.front().cost;
+                if_break |= !evals.empty() && bsums.lsc > evals.front().cost;
             }
             if (if_break) {
                 break;
@@ -727,6 +730,15 @@ private:
             assert((kept_sums & bsums.sums) == bsums.sums);
             kept_sums ^= bsums.sums;
             auto chunks = form_chunks(subprobl, kept_sums);
+
+            // Outer product optimization.
+            if (if_first) {
+                assert(!if_force_break);
+                if (chunks.size() > 1) {
+                    if_force_break = true;
+                }
+                if_first = false;
+            }
 
             // No enough broken summations.
             if (chunks.size() < 2) {
