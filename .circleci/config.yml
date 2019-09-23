@@ -2,14 +2,13 @@ version: 2
 jobs:
   test_debug:
     docker:
-      - image: tschijnmo/gccpython:latest
+      - image: tschijnmo/drudge:corebase
     steps:
-      - checkout
-      - run: git submodule update --init --recursive
       - run: |
+          git clone --recurse-submodules https://github.com/tschijnmo/libparenth.git
           mkdir cmake-test-debug
           cd cmake-test-debug
-          cmake -DCMAKE_BUILD_TYPE=debug ..
+          cmake -DCMAKE_BUILD_TYPE=debug ../libparenth
           make
           ./test/testmain
 
@@ -17,12 +16,11 @@ jobs:
     docker:
       - image: tschijnmo/gccpython:latest
     steps:
-      - checkout
-      - run: git submodule update --init --recursive
       - run: |
+          git clone --recurse-submodules https://github.com/tschijnmo/libparenth.git
           mkdir cmake-test-release
           cd cmake-test-release
-          cmake -DCMAKE_BUILD_TYPE=release ..
+          cmake -DCMAKE_BUILD_TYPE=release ../libparenth
           make
           ./test/testmain
 
