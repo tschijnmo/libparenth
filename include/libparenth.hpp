@@ -95,8 +95,8 @@ public:
         F_it last_factor)
         : dims_(first_dim, last_dim)
         , n_sums_{ n_sums }
-        , dims_on_{}
         , factors_with_{}
+        , dims_on_{}
     {
         assert(std::is_sorted(dims_.cbegin(), dims_.cbegin() + n_sums_));
 
